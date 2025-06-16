@@ -1,0 +1,251 @@
+
+
+  <!DOCTYPE html>
+  <html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Сервер Токенов с Админ Панелью</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        display: flex;
+      }
+      .admin-panel {
+        margin-right: 20px;
+      }
+      input {
+        margin-right: 10px;
+      }
+      .token-list {
+        border: 1px solid #ccc;
+        width: 30vw;
+        height: 90vh;
+        overflow-y: auto;
+      }
+    </style>
+    <script>
+      (function () {
+        'use strict';
+  
+        const STORAGE_KEY = 'tokenServerState';
+        let tokenState = {};
+        let allTokens = [];
+  
+        // Загружаем состояние токенов из localStorage
+        function loadTokenState() {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            try {
+              tokenState = JSON.parse(saved);
+            } catch (e) {
+              tokenState = {};
+            }
+          }
+          allTokens = Object.keys(tokenState);
+        }
+  
+        // Сохраняем состояние токенов в localStorage
+        function saveTokenState() {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tokenState));
+        }
+  
+        // Получаем свободный токен
+        function getFreeToken() {
+          for (const t of allTokens) {
+            if (!tokenState[t]) {
+              tokenState[t] = true; // Помечаем занятым
+              saveTokenState();
+              return t;
+            }
+          }
+          return null;
+        }
+  
+        // Освобождаем токен
+        function freeToken(token) {
+          if (!(token in tokenState)) return false;
+          if (!tokenState[token]) return false; // Уже свободен
+          tokenState[token] = false;
+          saveTokenState();
+          return true;
+        }
+  
+        // Добавляем новый токен
+        function addToken(newToken) {
+          if (newToken && !tokenState[newToken]) {
+            tokenState[newToken] = false; // по умолчанию свободный
+            saveTokenState();
+            return `Токен "${newToken}" успешно добавлен.`;
+          } else if (tokenState[newToken]) {
+            return `Ошибка: Токен "${newToken}" уже существует.`;
+          } else {
+            return 'Ошибка: Не указан токен для добавления.';
+          }
+        }
+
+        function updateTokenList() {
+          const tokenList = document.getElementById('tokenList');
+          tokenList.innerHTML = ''; // Очищаем текущий список
+          for (const token in tokenState) {
+            const status = tokenState[token] ? 'Занят' : 'Свободен';
+            const listItem = document.createElement('div');
+            listItem.textContent = `${token}: ${status}`;
+            tokenList.appendChild(listItem);
+          }
+        }
+
+          // Удаляем все токены
+        function removeAllTokens() {
+          tokenState = {}; // Очищаем состояние токенов
+          saveTokenState();
+          return 'Все токены успешно удалены.';
+        }
+  
+        // Удаляем токен
+        function removeToken(token) {
+          if (token in tokenState) {
+            delete tokenState[token];
+            saveTokenState();
+            return `Токен "${token}" успешно удален.`;
+          } else {
+            return `Ошибка: Токен "${token}" не найден.`;
+          }
+        }
+  
+        // Занимаем токен
+        function occupyToken(token) {
+          if (!(token in tokenState)) return false;
+          if (tokenState[token]) return false; // Уже занят
+          tokenState[token] = true; // Помечаем занятым
+          saveTokenState();
+          return true;
+        }
+
+        // Освобождаем все токены
+        function freeAllTokens() {
+          for (const token in tokenState) {
+            tokenState[token] = false; // освобождаем все токены
+          }
+          saveTokenState();
+          return 'Все токены успешно освобождены.';
+        }
+
+        // Освобождаем токен
+        function freeToken(token) {
+          if (!(token in tokenState)) return false;
+          if (!tokenState[token]) return false; // Уже свободен
+          tokenState[token] = false;
+          saveTokenState();
+          return true;
+        }
+  
+        // Основная логика обработки URL хеша
+        function main() {
+          loadTokenState();
+  
+          const hash = window.location.hash || '#/';
+          if (hash === '#/' || hash === '') {
+            // Выдать свободный токен
+            const token = getFreeToken();
+            if (token) {
+              document.body.innerHTML = `<p>${token}</p>`;
+            } else {
+              document.body.textContent = 'Нет свободных токенов.';
+            }
+          } else if (hash.startsWith('#close/')) {
+            // Освободить токен
+            const token = decodeURIComponent(hash.slice('#close/'.length));
+            if (!token) {
+              document.body.textContent = 'Ошибка: не указан токен для освобождения.';
+            } else {
+              const success = freeToken(token);
+              if (success) {
+                document.body.textContent = `Токен "${token}" успешно освобожден.`;
+              } else {
+                document.body.textContent = `Токен "${token}" не найден или уже свободен.`;
+              }
+            }
+          } else if (hash === '#/admin') {
+            // Отображение админ-панели
+            displayAdminPanel();
+          } else {
+            document.body.textContent = '404 Не найдено. Используйте "#/" для получения токена, "#close/ТОКЕН" для освобождения токена или "#/admin" для доступа к админ-панели.';
+          }
+        }
+  
+        // Отображение админ-панели
+        function displayAdminPanel() {
+          document.body.innerHTML = `
+            <div class="admin-panel">
+              <h1>Админ Панель Токенов</h1>
+              <input type="text" id="tokenInput" placeholder="Введите токен" />
+              <button id="addButton">Добавить</button>
+              <button id="removeButton">Удалить</button>
+              <button id="removeAllButton">Удалить все</button>
+              <button id="freeButton">Освободить токен</button>
+              <button id="occupyButton">Занять токен</button>
+              <button id="freeAllButton">Освободить все</button>
+              <p id="message"></p>
+            </div>
+            <div class="token-list" id="tokenList"></div>
+          `;
+
+          updateTokenList();
+  
+          // Обработчики событий для кнопок админ-панели
+          document.getElementById('addButton').onclick = function() {
+            const newToken = document.getElementById('tokenInput').value.trim();
+            const message = addToken(newToken);
+            document.getElementById('message').textContent = message;
+            updateTokenList();
+          };
+
+          document.getElementById('freeButton').onclick = function() {
+            const tokenToFree = document.getElementById('tokenInput').value.trim();
+            const message = freeToken(tokenToFree) ? `Токен "${tokenToFree}" успешно освобожден.` : `Ошибка: Токен "${tokenToFree}" не найден или уже свободен.`;
+            document.getElementById('message').textContent = message;
+            updateTokenList();
+          };
+
+          document.getElementById('removeAllButton').onclick = function() {
+            const message = removeAllTokens();
+            document.getElementById('message').textContent = message;
+            updateTokenList();
+          };
+
+          document.getElementById('removeButton').onclick = function() {
+            const tokenToRemove = document.getElementById('tokenInput').value.trim();
+            const message = removeToken(tokenToRemove);
+            document.getElementById('message').textContent = message;
+            updateTokenList();
+          };
+
+          document.getElementById('freeAllButton').onclick = function() {
+            const message = freeAllTokens();
+            document.getElementById('message').textContent = message;
+            updateTokenList();
+          };
+
+          document.getElementById('occupyButton').onclick = function() {
+            const tokenToOccupy = document.getElementById('tokenInput').value.trim();
+            const success = occupyToken(tokenToOccupy);
+            const message = success ? `Токен "${tokenToOccupy}" успешно занят.` : `Ошибка: Токен "${tokenToOccupy}" не найден или уже занят.`;
+            document.getElementById('message').textContent = message;
+            updateTokenList(); // Обновляем список токенов после занятия
+          };
+        }
+  
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', main);
+        } else {
+          main();
+        }
+      })();
+    </script>
+  </head>
+  <body>
+  </body>
+  </html>
+  
