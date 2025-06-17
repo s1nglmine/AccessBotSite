@@ -150,7 +150,7 @@
             // Выдать свободный токен
             const token = getFreeToken();
             if (token) {
-              document.body.innerHTML = `<p>${token}</p>`;
+              document.body.innerHTML = `${token}`;
             } else {
               document.body.textContent = 'Нет свободных токенов.';
             }
@@ -232,7 +232,7 @@
             const tokenToOccupy = document.getElementById('tokenInput').value.trim();
             const success = occupyToken(tokenToOccupy);
             const message = success ? `Токен "${tokenToOccupy}" успешно занят.` : `Ошибка: Токен "${tokenToOccupy}" не найден или уже занят.`;
-            document.getElementById('message').textContent = message;
+            document.body.textContent = message;
             updateTokenList(); // Обновляем список токенов после занятия
           };
         }
